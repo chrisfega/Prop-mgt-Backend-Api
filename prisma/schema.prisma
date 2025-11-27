@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  FROZEN
+}
+
+enum TenantStatus {
+  ACTIVE
+  MOVED_OUT
+  EVICTED
+  PENDING
+}
+
+enum PropertyType {
+  APARTMENT
+  DUPLEX
+  OFFICE
+  SHOP
+  SHORT_LET
+  OTHER
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  RESERVED
+  UNDER_MAINTENANCE
+}
+
+enum PaymentFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum LeaseStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  PENDING
+}
+
+enum InvoiceType {
+  RENT
+  SERVICE_CHARGE
+  MAINTENANCE_FEE
+  OTHER
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CARD
+  OTHER
+}
+
+enum TicketStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketReporter {
+  TENANT
+  STAFF
+}
+
+model User {
+  id           String     @id @default(uuid())
+  fullName     String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(STAFF)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Landlord {
+  id               String     @id @default(uuid())
+  fullName         String
+  email            String
+  phone            String
+  bankName         String?
+  bankAccountNumber String?
+  bankAccountName  String?
+  notes            String?
+  properties       Property[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model Property {
+  id           String       @id @default(uuid())
+  name         String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  country      String
+  description  String?
+  type         PropertyType
+  imageUrl     String?
+  landlordId   String
+  landlord     Landlord     @relation(fields: [landlordId], references: [id])
+  units        Unit[]
+  tickets      MaintenanceTicket[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Unit {
+  id                String     @id @default(uuid())
+  propertyId        String
+  property          Property   @relation(fields: [propertyId], references: [id])
+  name              String     // e.g. "Flat 1"
+  monthlyRentAmount Decimal
+  status            UnitStatus @default(VACANT)
+  currentTenant     Tenant?    @relation("CurrentTenant")
+  leases            Lease[]
+  invoices          Invoice[]
+  tickets           MaintenanceTicket[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Tenant {
+  id                    String   @id @default(uuid())
+  fullName              String
+  email                 String
+  phone                 String
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  currentUnitId         String?  @unique
+  currentUnit           Unit?    @relation("CurrentTenant", fields: [currentUnitId], references: [id])
+  status                TenantStatus @default(PENDING)
+  leases                Lease[]
+  invoices              Invoice[]
+  documents             Document[]
+  tickets               MaintenanceTicket[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model Lease {
+  id                    String           @id @default(uuid())
+  tenantId              String
+  tenant                Tenant           @relation(fields: [tenantId], references: [id])
+  unitId                String
+  unit                  Unit             @relation(fields: [unitId], references: [id])
+  startDate             DateTime
+  endDate               DateTime
+  rentAmount            Decimal
+  paymentFrequency      PaymentFrequency
+  securityDepositAmount Decimal?
+  otherCharges          Json?
+  status                LeaseStatus      @default(PENDING)
+  invoices              Invoice[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+}
+
+model Invoice {
+  id         String        @id @default(uuid())
+  leaseId    String?
+  lease      Lease?        @relation(fields: [leaseId], references: [id])
+  tenantId   String
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  unitId     String?
+  unit       Unit?         @relation(fields: [unitId], references: [id])
+  dueDate    DateTime
+  amount     Decimal
+  type       InvoiceType
+  status     InvoiceStatus @default(PENDING)
+  payments   Payment[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id])
+  amount      Decimal
+  paymentDate DateTime      @default(now())
+  method      PaymentMethod
+  reference   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model MaintenanceTicket {
+  id          String         @id @default(uuid())
+  propertyId  String
+  property    Property       @relation(fields: [propertyId], references: [id])
+  unitId      String?
+  unit        Unit?          @relation(fields: [unitId], references: [id])
+  tenantId    String?
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id])
+  title       String
+  description String
+  status      TicketStatus   @default(NEW)
+  priority    TicketPriority @default(MEDIUM)
+  reportedBy  TicketReporter
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
