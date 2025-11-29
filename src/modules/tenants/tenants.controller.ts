@@ -7,7 +7,7 @@ const tenantService = new TenantService();
 
 const createTenantSchema = z.object({
   fullName: z.string().min(2),
-  email: z.string().email(),
+  email: z.preprocess((val) => (val === '' ? null : val), z.string().email().optional().nullable()),
   phone: z.string(),
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),

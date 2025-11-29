@@ -107,7 +107,7 @@ model User {
 model Landlord {
   id               String     @id @default(uuid())
   fullName         String
-  email            String
+  email            String?
   phone            String
   bankName         String?
   bankAccountNumber String?
@@ -155,7 +155,7 @@ model Unit {
 model Tenant {
   id                    String   @id @default(uuid())
   fullName              String
-  email                 String
+  email                 String?
   phone                 String
   emergencyContactName  String?
   emergencyContactPhone String?

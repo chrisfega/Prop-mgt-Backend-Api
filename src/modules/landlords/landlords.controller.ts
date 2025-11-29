@@ -7,14 +7,18 @@ const landlordsService = new LandlordsService();
 
 const createLandlordSchema = z.object({
   fullName: z.string().min(2),
-  email: z.string().email(),
+  email: z
+    .string()
+    .email()
+    .or(z.literal(''))
+    .optional()
+    .transform((val) => (val === '' ? undefined : val)),
   phone: z.string().min(10),
   bankName: z.string().optional(),
   bankAccountNumber: z.string().optional(),
   bankAccountName: z.string().optional(),
   notes: z.string().optional(),
 });
-
 const updateLandlordSchema = createLandlordSchema.partial();
 
 export const getAllLandlords = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

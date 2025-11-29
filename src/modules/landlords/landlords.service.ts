@@ -29,30 +29,44 @@ export class LandlordsService {
   }
 
   async create(data: {
-    fullName: string;
-    email: string;
-    phone: string;
-    bankName?: string;
-    bankAccountNumber?: string;
-    bankAccountName?: string;
-    notes?: string;
-  }) {
-    return prisma.landlord.create({
-      data,
-    });
-  }
+  fullName: string;
+  email?: string;
+  phone: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
+  notes?: string;
+}) {
+  const { email, ...rest } = data;
+
+  return prisma.landlord.create({
+    data: {
+      ...rest,
+      ...(email ? { email } : {}),
+    },
+  });
+}
 
   async update(id: string, data: any) {
-    const landlord = await prisma.landlord.findUnique({ where: { id } });
-    if (!landlord) {
-      throw new AppError('Landlord not found', 404);
-    }
-
-    return prisma.landlord.update({
-      where: { id },
-      data,
-    });
+  const landlord = await prisma.landlord.findUnique({ where: { id } });
+  if (!landlord) {
+    throw new AppError('Landlord not found', 404);
   }
+
+  const { email, ...rest } = data;
+
+  return prisma.landlord.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(email === '' || email === undefined
+        ? { email: null } 
+        : email
+        ? { email }
+        : {}),
+    },
+  });
+}
 
   async delete(id: string) {
     const landlord = await prisma.landlord.findUnique({ where: { id } });

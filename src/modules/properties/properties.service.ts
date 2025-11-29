@@ -64,8 +64,47 @@ export class PropertyService {
   }
 
   async deleteProperty(id: string) {
-    await prisma.property.delete({
+    const property = await prisma.property.findUnique({
       where: { id },
+      include: { units: true },
+    });
+
+    if (!property) {
+      throw new AppError('Property not found', 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete tickets related to the property
+      await tx.maintenanceTicket.deleteMany({
+        where: { propertyId: id },
+      });
+
+      // 2. Handle units and their related records
+      for (const unit of property.units) {
+        // Delete leases related to unit
+        await tx.lease.deleteMany({ where: { unitId: unit.id } });
+        
+        // Delete invoices related to unit
+        // First delete payments for these invoices
+        const invoices = await tx.invoice.findMany({ where: { unitId: unit.id } });
+        if (invoices.length > 0) {
+            const invoiceIds = invoices.map(inv => inv.id);
+            await tx.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+            await tx.invoice.deleteMany({ where: { unitId: unit.id } });
+        }
+
+        // Disconnect current tenant
+        await tx.tenant.updateMany({
+          where: { currentUnitId: unit.id },
+          data: { currentUnitId: null },
+        });
+      }
+
+      // 3. Delete units
+      await tx.unit.deleteMany({ where: { propertyId: id } });
+
+      // 4. Delete property
+      await tx.property.delete({ where: { id } });
     });
   }
 

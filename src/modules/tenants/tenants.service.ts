@@ -5,7 +5,10 @@ import { AppError } from '../../utils/AppError';
 export class TenantService {
   async createTenant(data: any) {
     return prisma.tenant.create({
-      data,
+      data: {
+        ...data,
+        email: data.email === '' ? undefined : data.email,
+      },
     });
   }
 
@@ -46,14 +49,40 @@ export class TenantService {
   async updateTenant(id: string, data: any) {
     const tenant = await prisma.tenant.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        email: data.email === '' ? null : data.email,
+      },
     });
     return tenant;
   }
 
   async deleteTenant(id: string) {
-    await prisma.tenant.delete({
-      where: { id },
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) {
+      throw new AppError('Tenant not found', 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete documents
+      await tx.document.deleteMany({ where: { tenantId: id } });
+
+      // 2. Delete leases
+      await tx.lease.deleteMany({ where: { tenantId: id } });
+
+      // 3. Delete invoices and payments
+      const invoices = await tx.invoice.findMany({ where: { tenantId: id } });
+      if (invoices.length > 0) {
+        const invoiceIds = invoices.map(inv => inv.id);
+        await tx.payment.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+        await tx.invoice.deleteMany({ where: { tenantId: id } });
+      }
+
+      // 4. Delete tickets
+      await tx.maintenanceTicket.deleteMany({ where: { tenantId: id } });
+
+      // 5. Delete tenant
+      await tx.tenant.delete({ where: { id } });
     });
   }
 }
