@@ -6,7 +6,7 @@ dotenv.config();
 const envSchema = z.object({
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string(),
-  PORT: z.string().default('4000'),
+  PORT: z.string().default('4005'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   IMAGEKIT_PUBLIC_KEY: z.string().optional(),
   IMAGEKIT_PRIVATE_KEY: z.string().optional(),
