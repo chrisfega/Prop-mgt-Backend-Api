@@ -16,7 +16,7 @@ export class PaymentService {
     const payment = await prisma.payment.create({
       data: {
         ...data,
-        paymentDate: new Date(),
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
       },
     });
 

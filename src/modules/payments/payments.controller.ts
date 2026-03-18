@@ -9,6 +9,7 @@ const createPaymentSchema = z.object({
   invoiceId: z.string(),
   amount: z.number().min(0),
   method: z.enum(['BANK_TRANSFER', 'CASH', 'CARD', 'OTHER']),
+  paymentDate: z.string().optional(),
   reference: z.string().optional(),
 });
 
